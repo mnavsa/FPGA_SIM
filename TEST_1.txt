@@ -1,0 +1,852 @@
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.std_logic_unsigned.all;
+
+entity RAM is
+port(	CLK 		: in std_logic;
+		ADDRESS 	: in std_logic_vector(7 downto 0);
+		WRITE_EN 	: in std_logic;
+		DATA_IN 	: in std_logic_vector(7 downto 0);
+		DATA_OUT 	: out std_logic_vector(7 downto 0));
+end RAM;
+
+architecture RTL of RAM is
+type ram_type is array(255 downto 0) of std_logic_vector(7 downto 0);
+signal MEMORY : ram_type;
+begin
+	process(CLK)
+	begin
+		if rising_edge(CLK) then
+			if WRITE_EN = '1' then
+				MEMORY(conv_integer(ADDRESS)) <= DATA_IN;
+			end if;
+		end if;
+	end process;
+	DATA_OUT <= MEMORY(conv_integer(ADDRESS));
+end RTL;
+
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.std_logic_unsigned.all;
+
+entity TRI_STATE_BUFFER is
+port(	INPUT 	: in std_logic;
+		EN		: in std_logic;
+		OUTPUT	: out std_logic);
+end TRI_STATE_BUFFER;
+
+architecture RTL of TRI_STATE_BUFFER is
+begin
+	OUTPUT <= INPUT when (EN = '1') else 'Z';
+end RTL;
+
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.std_logic_unsigned.all;
+
+entity TRI_STATE_BUFFER_4 is
+port(	INPUT 	: in std_logic_vector(3 downto 0);
+		EN		: in std_logic;
+		OUTPUT	: out std_logic_vector(3 downto 0));
+end TRI_STATE_BUFFER_4;
+
+architecture RTL of TRI_STATE_BUFFER_4 is
+begin
+	OUTPUT <= INPUT when (EN = '1') else "ZZZZ";
+end RTL;
+
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.std_logic_unsigned.all;
+
+entity TRI_STATE_BUFFER_8 is
+port(	INPUT 	: in std_logic_vector(7 downto 0);
+		EN		: in std_logic;
+		OUTPUT	: out std_logic_vector(7 downto 0));
+end TRI_STATE_BUFFER_8;
+
+architecture RTL of TRI_STATE_BUFFER_8 is
+begin
+	OUTPUT <= INPUT when (EN = '1') else "ZZZZZZZZ";
+end RTL;
+
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.std_logic_unsigned.all;
+
+entity ENCODER is
+port(	CLK 		: in std_logic;
+		MESSAGE 	: in std_logic_vector(3 downto 0);
+		ENCODER_OUT : out std_logic_vector(7 downto 0));
+end ENCODER;
+
+architecture RTL of ENCODER is
+signal TEMP : std_logic_vector(6 downto 0);
+begin
+	process(CLK)
+	begin
+		if rising_edge(CLK) then
+			TEMP(0) <= MESSAGE(0) XOR MESSAGE(1) XOR MESSAGE(3);
+			TEMP(1) <= MESSAGE(0) XOR MESSAGE(2) XOR MESSAGE(3);
+			TEMP(2) <= MESSAGE(0);
+			TEMP(3) <= MESSAGE(1) XOR MESSAGE(2) XOR MESSAGE(3);
+			TEMP(4) <= MESSAGE(1);
+			TEMP(5) <= MESSAGE(2);
+			TEMP(6) <= MESSAGE(3);
+		end if;
+	end process;
+	ENCODER_OUT(0) <= TEMP(0);
+	ENCODER_OUT(1) <= TEMP(1);
+	ENCODER_OUT(2) <= TEMP(2);
+	ENCODER_OUT(3) <= TEMP(3);
+	ENCODER_OUT(4) <= TEMP(4);
+	ENCODER_OUT(5) <= TEMP(5);
+	ENCODER_OUT(6) <= TEMP(6);
+	ENCODER_OUT(7) <= TEMP(6) XOR TEMP(5) XOR TEMP(4) XOR TEMP(3) XOR TEMP(2) XOR TEMP(1) XOR TEMP(0);
+end RTL; 
+
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.std_logic_unsigned.all;
+
+entity CORRUPTOR is
+port(	CLK 		 : in std_logic;
+		CODEWORD_IN	 : in std_logic_vector(7 downto 0);
+		CODEWORD_OUT : out std_logic_vector(7 downto 0));
+end CORRUPTOR;
+
+architecture RTL of CORRUPTOR is
+begin
+	process(CLK)
+	begin
+		if rising_edge(CLK) then 
+			CODEWORD_OUT <= CODEWORD_IN XOR "00010000";
+		end if;
+	end process;
+end RTL;
+
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.std_logic_unsigned.all;
+
+entity SCRUBBER is
+port(	CLK 		 : in std_logic;
+		SCRUB_EN 	 : in std_logic;
+		CORRECTED 	 : in std_logic;
+		ADDRESS_IN 	 : in std_logic_vector(7 downto 0);
+		ADDRESS_OUT  : out std_logic_vector(7 downto 0);
+		EN_OUT 		 : out std_logic);
+end SCRUBBER;
+
+architecture RTL of SCRUBBER is
+signal TEMP : std_logic;
+begin
+	process(CLK,CORRECTED,SCRUB_EN)
+	begin
+		if SCRUB_EN = '1' then
+			if rising_edge(CLK) AND CORRECTED = '1' then
+					TEMP <= '1';
+			else 
+				TEMP <= '0';
+			end if;
+		end if;
+	end process;
+	EN_OUT <= TEMP;
+	ADDRESS_OUT  <= ADDRESS_IN;
+end RTL;
+
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.std_logic_unsigned.all;
+
+entity SED is
+port(	CLK 		 : in std_logic;
+		CODEWORD_IN  : in std_logic_vector(7 downto 0);
+		CODEWORD_OUT : out std_logic_vector(7 downto 0);
+		PARITY_OUT 	 : out std_logic_vector(2 downto 0));
+end SED;
+
+architecture RTL of SED is
+begin
+	process(CLK,CODEWORD_IN)
+	begin
+		if rising_edge(CLK) then 
+			CODEWORD_OUT <= CODEWORD_IN;
+			PARITY_OUT(0) <= CODEWORD_IN(0) xor CODEWORD_IN(2) xor CODEWORD_IN(4) xor CODEWORD_IN(6);
+			PARITY_OUT(1) <= CODEWORD_IN(1) xor CODEWORD_IN(2) xor CODEWORD_IN(5) xor CODEWORD_IN(6);
+			PARITY_OUT(2) <= CODEWORD_IN(3) xor CODEWORD_IN(4) xor CODEWORD_IN(5) xor CODEWORD_IN(6);
+		end if; 		
+	end process;
+	
+end RTL;
+
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.std_logic_unsigned.all;
+
+entity SEC is
+port( 	CLK 			: in std_logic;
+		PARITY_IN 		: in std_logic_vector(2 downto 0);
+		CODEWORD_IN 	: in std_logic_vector(7 downto 0);
+		CODEWORD_OUT 	: out std_logic_vector(7 downto 0);
+		CORRECTED 		: out std_logic);
+end SEC;
+
+architecture RTL of SEC is
+signal t_CORRECTED : std_logic := '0';
+begin
+	process(CLK,CODEWORD_IN)
+	begin
+		if PARITY_IN = "001" then 
+			CODEWORD_OUT(0) <= NOT CODEWORD_IN(0);
+			CODEWORD_OUT(1) <= CODEWORD_IN(1);
+			CODEWORD_OUT(2) <= CODEWORD_IN(2);
+			CODEWORD_OUT(3) <= CODEWORD_IN(3);
+			CODEWORD_OUT(4) <= CODEWORD_IN(4);
+			CODEWORD_OUT(5) <= CODEWORD_IN(5);
+			CODEWORD_OUT(6) <= CODEWORD_IN(6);
+			CODEWORD_OUT(7) <= CODEWORD_IN(7);
+			t_CORRECTED <= '1'; 
+		elsif PARITY_IN = "010" then 
+			CODEWORD_OUT(0) <= CODEWORD_IN(0);
+			CODEWORD_OUT(1) <= NOT CODEWORD_IN(1);
+			CODEWORD_OUT(2) <= CODEWORD_IN(2);
+			CODEWORD_OUT(3) <= CODEWORD_IN(3);
+			CODEWORD_OUT(4) <= CODEWORD_IN(4);
+			CODEWORD_OUT(5) <= CODEWORD_IN(5);
+			CODEWORD_OUT(6) <= CODEWORD_IN(6);
+			CODEWORD_OUT(7) <= CODEWORD_IN(7);
+			t_CORRECTED <= '1';
+		elsif PARITY_IN = "011" then 
+			CODEWORD_OUT(0) <= CODEWORD_IN(0);
+			CODEWORD_OUT(1) <= CODEWORD_IN(1);
+			CODEWORD_OUT(2) <= NOT CODEWORD_IN(2);
+			CODEWORD_OUT(3) <= CODEWORD_IN(3);
+			CODEWORD_OUT(4) <= CODEWORD_IN(4);
+			CODEWORD_OUT(5) <= CODEWORD_IN(5);
+			CODEWORD_OUT(6) <= CODEWORD_IN(6);
+			CODEWORD_OUT(7) <= CODEWORD_IN(7);
+			t_CORRECTED <= '1';
+		elsif PARITY_IN = "100" then 
+			CODEWORD_OUT(0) <= CODEWORD_IN(0);
+			CODEWORD_OUT(1) <= CODEWORD_IN(1);
+			CODEWORD_OUT(2) <= CODEWORD_IN(2);
+			CODEWORD_OUT(3) <= NOT CODEWORD_IN(3);
+			CODEWORD_OUT(4) <= CODEWORD_IN(4);
+			CODEWORD_OUT(5) <= CODEWORD_IN(5);
+			CODEWORD_OUT(6) <= CODEWORD_IN(6);
+			CODEWORD_OUT(7) <= CODEWORD_IN(7);
+			t_CORRECTED <= '1';
+		elsif PARITY_IN = "101" then 
+			CODEWORD_OUT(0) <= CODEWORD_IN(0);
+			CODEWORD_OUT(1) <= CODEWORD_IN(1);
+			CODEWORD_OUT(2) <= CODEWORD_IN(2);
+			CODEWORD_OUT(3) <= CODEWORD_IN(3);
+			CODEWORD_OUT(4) <= NOT CODEWORD_IN(4);
+			CODEWORD_OUT(5) <= CODEWORD_IN(5);
+			CODEWORD_OUT(6) <= CODEWORD_IN(6);
+			CODEWORD_OUT(7) <= CODEWORD_IN(7);
+			t_CORRECTED <= '1';
+		elsif PARITY_IN = "110" then 
+			CODEWORD_OUT(0) <= CODEWORD_IN(0);
+			CODEWORD_OUT(1) <= CODEWORD_IN(1);
+			CODEWORD_OUT(2) <= CODEWORD_IN(2);
+			CODEWORD_OUT(3) <= CODEWORD_IN(3);
+			CODEWORD_OUT(4) <= CODEWORD_IN(4);
+			CODEWORD_OUT(5) <= NOT CODEWORD_IN(5);
+			CODEWORD_OUT(6) <= CODEWORD_IN(6);
+			CODEWORD_OUT(7) <= CODEWORD_IN(7);
+			t_CORRECTED <= '1';
+		elsif PARITY_IN = "111" then 
+			CODEWORD_OUT(0) <= CODEWORD_IN(0);
+			CODEWORD_OUT(1) <= CODEWORD_IN(1);
+			CODEWORD_OUT(2) <= CODEWORD_IN(2);
+			CODEWORD_OUT(3) <= CODEWORD_IN(3);
+			CODEWORD_OUT(4) <= CODEWORD_IN(4);
+			CODEWORD_OUT(5) <= CODEWORD_IN(5);
+			CODEWORD_OUT(6) <= NOT CODEWORD_IN(6);
+			CODEWORD_OUT(7) <= CODEWORD_IN(7);
+			t_CORRECTED <= '1';
+		else
+			CODEWORD_OUT(0) <= CODEWORD_IN(0);
+			CODEWORD_OUT(1) <= CODEWORD_IN(1);
+			CODEWORD_OUT(2) <= CODEWORD_IN(2);
+			CODEWORD_OUT(3) <= CODEWORD_IN(3);
+			CODEWORD_OUT(4) <= CODEWORD_IN(4);
+			CODEWORD_OUT(5) <= CODEWORD_IN(5);
+			CODEWORD_OUT(6) <= CODEWORD_IN(6);
+			CODEWORD_OUT(7) <= CODEWORD_IN(7);
+			t_CORRECTED <= '0';
+		end if;
+	end process;
+	CORRECTED <= t_CORRECTED;
+end RTL;
+
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.std_logic_unsigned.all;
+
+entity DED is
+port(	CLK 		 : in std_logic;
+		CODEWORD_IN  : in std_logic_vector(7 downto 0);
+		CODEWORD_OUT : out std_logic_vector(7 downto 0);
+		DATA_OUT 	 : out std_logic_vector(3 downto 0);
+		ERROR 		 : out std_logic);
+end DED;
+
+architecture RTL of DED is
+signal PARITY_CHECK : std_logic;
+begin
+	PARITY_CHECK <= CODEWORD_IN(6) XOR CODEWORD_IN(5) XOR CODEWORD_IN(4) XOR CODEWORD_IN(3) XOR CODEWORD_IN(2) XOR CODEWORD_IN(1) XOR CODEWORD_IN(0);
+	process(CLK,CODEWORD_IN)
+	begin
+		if rising_edge(CLK) then 
+			CODEWORD_OUT <= CODEWORD_IN;
+			if PARITY_CHECK = CODEWORD_IN(7) then
+				DATA_OUT(0) <= CODEWORD_IN(2);
+				DATA_OUT(1) <= CODEWORD_IN(4);
+				DATA_OUT(2) <= CODEWORD_IN(5);
+				DATA_OUT(3) <= CODEWORD_IN(6);
+				ERROR <= '0';
+			else
+				ERROR <= '1';
+				DATA_OUT(0) <= CODEWORD_IN(2);
+				DATA_OUT(1) <= CODEWORD_IN(4);
+				DATA_OUT(2) <= CODEWORD_IN(5);
+				DATA_OUT(3) <= CODEWORD_IN(6);
+			end if;
+		end if;
+	
+	end process;
+	
+end RTL;
+
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.std_logic_unsigned.all;
+
+entity DECODER is
+port(	CLK 		 : in std_logic;
+		ENABLE		 : in std_logic;
+		CODEWORD_IN  : in std_logic_vector(7 downto 0);
+		CODEWORD_OUT : out std_logic_vector(7 downto 0);
+		DATA_OUT 	 : out std_logic_vector(3 downto 0);
+		CORRECTED 	 : out std_logic;
+		ERROR 		 : out std_logic);
+end DECODER;
+
+architecture RTL of DECODER is
+component SED is
+port(	CLK 		 : in std_logic;
+		CODEWORD_IN  : in std_logic_vector(7 downto 0);
+		CODEWORD_OUT : out std_logic_vector(7 downto 0);
+		PARITY_OUT 	 : out std_logic_vector(2 downto 0));
+end component;
+component SEC is
+port( 	CLK 			: in std_logic;
+		PARITY_IN 		: in std_logic_vector(2 downto 0);
+		CODEWORD_IN 	: in std_logic_vector(7 downto 0);
+		CODEWORD_OUT 	: out std_logic_vector(7 downto 0);
+		CORRECTED 		: out std_logic);
+end component;
+component DED is
+port(	CLK 		 : in std_logic;
+		CODEWORD_IN  : in std_logic_vector(7 downto 0);
+		CODEWORD_OUT : out std_logic_vector(7 downto 0);
+		DATA_OUT 	 : out std_logic_vector(3 downto 0);
+		ERROR 		 : out std_logic);
+end component;
+signal SED_OUT_1 		: std_logic_vector(7 downto 0);
+signal SED_OUT_2		: std_logic_vector(2 downto 0);
+signal SEC_OUT_1 		: std_logic_vector(7 downto 0);
+signal DATA		 		: std_logic_vector(3 downto 0);
+signal t_CORRECT		: std_logic;
+signal t_ERROR   		: std_logic;
+signal t_CODEWORD_OUT 	: std_logic_vector(7 downto 0);
+begin
+	block_1 : SED
+		port map(CLK,CODEWORD_IN,SED_OUT_1,SED_OUT_2);
+	block_2 : SEC
+		port map(CLK,SED_OUT_2,SED_OUT_1,SEC_OUT_1,t_CORRECT);
+	block_3 : DED
+		port map(CLK,SEC_OUT_1,t_CODEWORD_OUT,DATA,t_ERROR);
+	DATA_OUT <= DATA when ENABLE = '0' else "ZZZZ";
+	CORRECTED <= t_CORRECT when ENABLE = '0' else 'Z';
+	ERROR <= t_ERROR when ENABLE = '0' else 'Z';
+	CODEWORD_OUT <= t_CODEWORD_OUT when ENABLE = '0' else "ZZZZZZZZ";
+end RTL;
+
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.std_logic_unsigned.all;
+
+entity SLOW_CLK is
+port(	CLK_IN  : in std_logic;
+		CLK_OUT : out std_logic);
+end SLOW_CLK;
+
+architecture RTL of SLOW_CLK is
+signal TEMP 	 : std_logic_vector(3 downto 0) := "0001";
+signal T_CLK_OUT : std_logic := '0';
+begin
+	process(CLK_IN) 
+	begin
+		if CLK_IN'event then
+			if TEMP = "0101" then
+				T_CLK_OUT <= '1';
+				TEMP <= "0000";
+			else
+				T_CLK_OUT <= '0';
+				TEMP <= TEMP + "0001";
+			end if;
+		end if;
+	end process;
+	CLK_OUT <= T_CLK_OUT;
+end RTL;
+
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.std_logic_unsigned.all;
+
+entity SLOW_CLK_2 is
+port(	CLK_IN  : in std_logic;
+		CLK_OUT : out std_logic);
+end SLOW_CLK_2;
+
+architecture RTL of SLOW_CLK_2 is
+signal TEMP 	 : std_logic_vector(3 downto 0) := "0011";
+signal T_CLK_OUT : std_logic := '0';
+begin
+	process(CLK_IN) 
+	begin
+		if CLK_IN'event then
+			if TEMP = "0101" then
+				T_CLK_OUT <= '1';
+				TEMP <= "0000";
+			else
+				T_CLK_OUT <= '0';
+				TEMP <= TEMP + "0001";
+			end if;
+		end if;
+	end process;
+	CLK_OUT <= T_CLK_OUT;
+end RTL;
+
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.std_logic_unsigned.all;
+
+entity SLOW_CLK_3 is
+port(	CLK_IN  : in std_logic;
+		CLK_OUT : out std_logic);
+end SLOW_CLK_3;
+
+architecture RTL of SLOW_CLK_3 is
+signal TEMP 	 : std_logic_vector(3 downto 0) := "0000";
+signal T_CLK_OUT : std_logic := '1';
+begin
+	process(CLK_IN) 
+	begin
+		if CLK_IN'event AND rising_edge(CLK_IN) then
+			if TEMP = "0101" then
+				T_CLK_OUT <= '1';
+				TEMP <= "0000";
+			else
+				T_CLK_OUT <= '0';
+				TEMP <= TEMP + "0001";
+			end if;
+		end if;
+	end process;
+	CLK_OUT <= T_CLK_OUT;
+end RTL;
+
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.std_logic_unsigned.all;
+
+entity SLOW_CLK_4 is
+port(	CLK_IN  : in std_logic;
+		CLK_OUT : out std_logic);
+end SLOW_CLK_4;
+
+architecture RTL of SLOW_CLK_4 is
+signal TEMP 	 : std_logic_vector(3 downto 0) := "0000";
+signal T_CLK_OUT : std_logic := '1';
+begin
+	process(CLK_IN) 
+	begin
+		if CLK_IN'event AND rising_edge(CLK_IN) then
+			if TEMP = "0101" then
+				T_CLK_OUT <= '1';
+				TEMP <= "0000";
+			elsif TEMP = "000" OR TEMP = "001" then
+				T_CLK_OUT <= '1';
+				TEMP <= TEMP + "0001";
+			else
+				T_CLK_OUT <= '0';
+				TEMP <= TEMP + "0001";
+			end if;
+		end if;
+	end process;
+	CLK_OUT <= T_CLK_OUT;
+end RTL;
+
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.std_logic_unsigned.all;
+
+entity SLOW_CLK_5 is
+port(	CLK_IN  : in std_logic;
+		CLK_OUT : out std_logic);
+end SLOW_CLK_5;
+
+architecture RTL of SLOW_CLK_5 is
+signal TEMP 	 : std_logic_vector(3 downto 0) := "0001";
+signal T_CLK_OUT : std_logic := '0';
+begin
+	process(CLK_IN) 
+	begin
+		if CLK_IN'event AND rising_edge(CLK_IN) then
+			if TEMP = "0101" then
+				T_CLK_OUT <= '1';
+				TEMP <= "0000";
+			else
+				T_CLK_OUT <= '0';
+				TEMP <= TEMP + "0001";
+			end if;
+		end if;
+	end process;
+	CLK_OUT <= T_CLK_OUT;
+end RTL;
+
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.std_logic_unsigned.all;
+
+entity EDAC_SIM_1 is
+port(	CLK 	 	: in std_logic;
+		SCRUB_EN 	: in std_logic;
+		MESSAGE  	: in std_logic_vector(3 downto 0);
+		ADDRESS  	: in std_logic_vector(7 downto 0);
+		WRITE_EN 	: in std_logic;
+		DATA_OUT 	: out std_logic_vector(3 downto 0);
+		ERROR 	 	: out std_logic;
+		SLOW_CLK_O  : out std_logic);
+end EDAC_SIM_1;
+
+architecture RTL of EDAC_SIM_1 is
+
+component ENCODER is
+port(	CLK 		: in std_logic;
+		MESSAGE 	: in std_logic_vector(3 downto 0);
+		ENCODER_OUT : out std_logic_vector(7 downto 0));
+end component;
+
+component CORRUPTOR is
+port(	CLK 		 : in std_logic;
+		CODEWORD_IN	 : in std_logic_vector(7 downto 0);
+		CODEWORD_OUT : out std_logic_vector(7 downto 0));
+end component;
+
+component DECODER is
+port(	CLK 		 : in std_logic;
+		ENABLE		 : in std_logic;
+		CODEWORD_IN  : in std_logic_vector(7 downto 0);
+		CODEWORD_OUT : out std_logic_vector(7 downto 0);
+		DATA_OUT 	 : out std_logic_vector(3 downto 0);
+		CORRECTED 	 : out std_logic;
+		ERROR 		 : out std_logic);
+end component;
+
+component SCRUBBER is
+port(	CLK 		 : in std_logic;
+		SCRUB_EN 	 : in std_logic;
+		CORRECTED 	 : in std_logic;
+		ADDRESS_IN 	 : in std_logic_vector(7 downto 0);
+		ADDRESS_OUT  : out std_logic_vector(7 downto 0);
+		EN_OUT 		 : out std_logic);
+end component;
+
+component RAM is
+port(	CLK 		: in std_logic;
+		ADDRESS 	: in std_logic_vector(7 downto 0);
+		WRITE_EN 	: in std_logic;
+		DATA_IN 	: in std_logic_vector(7 downto 0);
+		DATA_OUT 	: out std_logic_vector(7 downto 0));
+end component;
+
+component TRI_STATE_BUFFER is
+port(	INPUT 	: in std_logic;
+		EN		: in std_logic;
+		OUTPUT	: out std_logic);
+end component;
+
+component TRI_STATE_BUFFER_4 is
+port(	INPUT 	: in std_logic_vector(3 downto 0);
+		EN		: in std_logic;
+		OUTPUT	: out std_logic_vector(3 downto 0));
+end component;
+
+component TRI_STATE_BUFFER_8 is
+port(	INPUT 	: in std_logic_vector(7 downto 0);
+		EN		: in std_logic;
+		OUTPUT	: out std_logic_vector(7 downto 0));
+end component;
+
+component SLOW_CLK is
+port(	CLK_IN  : in std_logic;
+		CLK_OUT : out std_logic);
+end component;
+
+component SLOW_CLK_2 is
+port(	CLK_IN  : in std_logic;
+		CLK_OUT : out std_logic);
+end component;
+
+component SLOW_CLK_5 is
+port(	CLK_IN  : in std_logic;
+		CLK_OUT : out std_logic);
+end component;
+
+
+signal WEN, WEN_NOT 	: std_logic;
+signal SC				: std_logic;
+signal SC_2 			: std_logic;
+signal SC_5 			: std_logic;
+signal ENC_OUT 			: std_logic_vector(7 downto 0);
+signal COR_OUT			: std_logic_vector(7 downto 0);
+signal SCR_COR_IN		: std_logic;
+signal SCR_EN_OUT		: std_logic;
+signal SCR_ADR_OUT		: std_logic_vector(7 downto 0);
+signal DEC_CDW_OUT		: std_logic_vector(7 downto 0);
+signal DEC_DAT_OUT		: std_logic_vector(3 downto 0);
+signal DEC_COR_OUT		: std_logic;
+signal DEC_ERR_OUT		: std_logic;
+signal RAM_DAT_IN		: std_logic_vector(7 downto 0);
+signal RAM_DAT_OUT		: std_logic_vector(7 downto 0);
+signal RAM_ADR_IN		: std_logic_vector(7 downto 0);
+signal RAM_WEN_IN		: std_logic;
+
+begin
+
+	block_01 : ENCODER
+		port map(CLK,MESSAGE,ENC_OUT);
+		
+	block_02 : CORRUPTOR
+		port map(SC_2,ENC_OUT,COR_OUT);
+		
+	block_03 : SCRUBBER
+		port map(SC,SCRUB_EN,DEC_COR_OUT,ADDRESS,SCR_ADR_OUT,SCR_EN_OUT);
+		
+	block_04 : DECODER
+		port map(CLK,WEN,RAM_DAT_OUT,DEC_CDW_OUT,DEC_DAT_OUT,DEC_COR_OUT,DEC_ERR_OUT);
+		
+	block_05 : SLOW_CLK
+		port map(CLK,SC);
+		
+	block_06 : RAM
+		port map(SC,RAM_ADR_IN,RAM_WEN_IN,RAM_DAT_IN,RAM_DAT_OUT);
+		
+	block_07 : TRI_STATE_BUFFER --USER WRITE ENABLE
+		port map(WEN,WEN,RAM_WEN_IN);
+		
+	block_08 : TRI_STATE_BUFFER--SCRUBBER WRITE ENABLE
+		port map(SCRUB_EN,WEN_NOT,RAM_WEN_IN);
+		
+	block_09 : TRI_STATE_BUFFER--DECODER ERROR
+		port map(DEC_ERR_OUT,SC,ERROR);
+		
+	block_10 : TRI_STATE_BUFFER--DECODER CORRECTED
+		port map(DEC_COR_OUT,SC,SCR_COR_IN);
+		
+	block_11 : TRI_STATE_BUFFER_4--DECODER DATA_OUT
+		port map(DEC_DAT_OUT,SC_5,DATA_OUT);
+		
+	block_12 : TRI_STATE_BUFFER_8--USER ADDRESS
+		port map(ADDRESS,WEN,RAM_ADR_IN);
+	
+	block_13 : TRI_STATE_BUFFER_8--SCRUBBER ADDRESS
+		port map(SCR_ADR_OUT,WEN_NOT,RAM_ADR_IN);
+		
+	block_14 : TRI_STATE_BUFFER_8--USER CODEWORD
+		port map(COR_OUT,WEN,RAM_DAT_IN);
+		
+	block_15 : TRI_STATE_BUFFER_8--DECODER CODEWORD
+		port map(DEC_CDW_OUT,WEN_NOT,RAM_DAT_IN);
+		
+	block_16 : SLOW_CLK_2
+		port map(CLK,SC_2);
+		
+	block_17 : SLOW_CLK_5
+		port map(CLK,SC_5);
+		
+	WEN <= WRITE_EN;
+	WEN_NOT <= NOT WRITE_EN;
+	SLOW_CLK_O <= SC;
+
+end RTL;
+
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.std_logic_unsigned.all;
+
+entity ADDR_GEN is
+port(	CLK 	: in std_logic;
+		ADDR_O  : out std_logic_vector(7 downto 0));
+end ADDR_GEN;
+
+architecture RTL of ADDR_GEN is
+signal TEMP : std_logic_vector(7 downto 0) := "00000000";
+begin
+	process(CLK)
+	begin
+		if rising_edge(CLK) then
+			if TEMP = "11111111" then
+				TEMP <= "00000000";
+			else
+				TEMP <= TEMP + "00000001";
+			end if;
+		end if;
+	end process;
+	ADDR_O <= TEMP;
+end RTL;
+
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.std_logic_unsigned.all;
+
+entity CMP is
+port(	DATA_IN_1 : in std_logic_vector(3 downto 0);
+		DATA_IN_2 : in std_logic_vector(3 downto 0);
+		ENABLE 	  : in std_logic;
+		CMP_OUT	  : out std_logic);
+end CMP;
+
+architecture RTL of CMP is
+begin
+	process(DATA_IN_1, DATA_IN_2)
+	begin
+		if DATA_IN_2 = "ZZZZ" then
+			CMP_OUT <= '0';
+		elsif DATA_IN_1 = DATA_IN_2 then
+			CMP_OUT <= '0';
+		else 
+			CMP_OUT <= '1';
+		end if;
+	end process;
+	
+end RTL;
+
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.std_logic_unsigned.all;
+
+entity MSG_GEN is
+port(	CLK		: in std_logic;
+		MSG_O	: out std_logic_vector(3 downto 0));
+end MSG_GEN;
+
+architecture RTL of MSG_GEN is
+signal TEMP : std_logic_vector(3 downto 0) := "0000";
+begin
+	process(CLK)
+	begin
+		if rising_edge(CLK) then
+			if TEMP = "1111" then
+				TEMP <= "0000";
+			else
+				TEMP <= TEMP + "0001";
+			end if;
+		end if;
+	end process;
+	MSG_O <= TEMP;
+end RTL;
+
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.std_logic_unsigned.all;
+
+entity FPGA_SIM is
+port(	CLK 	: in std_logic;
+		CMP_OUT : out std_logic);
+end FPGA_SIM;
+
+architecture RTL of FPGA_SIM is
+
+component EDAC_SIM_1 is
+port(	CLK 	 	: in std_logic;
+		SCRUB_EN 	: in std_logic;
+		MESSAGE  	: in std_logic_vector(3 downto 0);
+		ADDRESS  	: in std_logic_vector(7 downto 0);
+		WRITE_EN 	: in std_logic;
+		DATA_OUT 	: out std_logic_vector(3 downto 0);
+		ERROR 	 	: out std_logic;
+		SLOW_CLK_O  : out std_logic);
+end component;
+
+component ADDR_GEN is
+port(	CLK 	: in std_logic;
+		ADDR_O  : out std_logic_vector(7 downto 0));
+end component;
+
+component MSG_GEN is
+port(	CLK		: in std_logic;
+		MSG_O	: out std_logic_vector(3 downto 0));
+end component;
+
+component SLOW_CLK_3 is
+port(	CLK_IN : in std_logic;
+		CLK_OUT : out std_logic);
+end component;
+
+component SLOW_CLK_4 is
+port(	CLK_IN  : in std_logic;
+		CLK_OUT : out std_logic);
+end component;
+
+component SLOW_CLK_5 is
+port(	CLK_IN  : in std_logic;
+		CLK_OUT : out std_logic);
+end component;
+
+component CMP is
+port(	DATA_IN_1 : in std_logic_vector(3 downto 0);
+		DATA_IN_2 : in std_logic_vector(3 downto 0);
+		ENABLE 	  : in std_logic;
+		CMP_OUT	  : out std_logic);
+end component;
+
+signal SC3 : std_logic;
+signal SC4 : std_logic;
+signal SC5 : std_logic;
+signal SC : std_logic;
+signal EN : std_logic := '1';
+signal MSG_IN : std_logic_vector(3 downto 0);
+signal ADR_IN : std_logic_vector(7 downto 0);
+signal DAT_OUT :  std_logic_vector(3 downto 0);
+signal ERR : std_logic;
+
+
+begin
+
+	block_01 : EDAC_SIM_1
+		port map(CLK,EN,MSG_IN,ADR_IN,SC4,DAT_OUT,ERR,SC);
+		
+	block_02 : ADDR_GEN
+		port map(SC3,ADR_IN);
+		
+	block_03 : MSG_GEN
+		port map(SC3,MSG_IN);
+		
+	block_04: SLOW_CLK_3
+		port map(CLK,SC3);
+		
+	block_05: CMP
+		port map(MSG_IN,DAT_OUT,SC5,CMP_OUT);
+		
+	block_06 : SLOW_CLK_4
+		port map(CLK,SC4);
+		
+	block_07 : SLOW_CLK_5
+		port map(CLK,SC5);
+end RTL;
